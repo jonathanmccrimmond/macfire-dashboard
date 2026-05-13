@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MacFire AI Scout — Lead Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --accent:  #6366F1;       /* indigo — primary brand accent */
+      --accent2: #818CF8;       /* lighter indigo for hover/highlights */
+      --dark:    #0F172A;       /* deep navy background */
+      --card:    #1E293B;       /* slate card */
+      --card2:   #253147;       /* slightly lighter card */
+      --border:  #334155;       /* slate border */
+      --text:    #E2E8F0;       /* near-white text */
+      --muted:   #94A3B8;       /* slate-400 */
+      --green:   #10B981;       /* emerald */
+      --amber:   #F59E0B;       /* amber */
+      --red:     #EF4444;       /* red — HIGH PRIORITY ONLY */
+      --teal:    #0D9488;       /* teal for maps/links */
+      --white:   #FFFFFF;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--dark); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 14px; min-height: 100vh; }
+
+    /* Header */
+    .header { background: #0B1120; border-bottom: 2px solid var(--border); padding: 16px 28px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+    .header-left { display: flex; align-items: center; gap: 14px; }
+    .logo { width: 36px; height: 36px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+    .header h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+    .header h1 span { color: var(--accent2); }
+    .header-right { display: flex; align-items: center; gap: 16px; }
+    .refresh-btn { background: var(--card2); border: 1px solid var(--border); color: var(--text); padding: 7px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; transition: background 0.2s; }
+    .refresh-btn:hover { background: var(--border); }
+    .last-updated { color: var(--muted); font-size: 12px; }
+    .live-dot { width: 8px; height: 8px; background: var(--green); border-radius: 50%; display: inline-block; margin-right: 6px; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    /* Layout */
+    .container { max-width: 1400px; margin: 0 auto; padding: 24px 28px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+    .grid-2-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 24px; }
+    @media (max-width: 1100px) { .grid-4{grid-template-columns:repeat(2,1fr)} .grid-2-1{grid-template-columns:1fr} }
+    @media (max-width: 700px) { .grid-4,.grid-3,.grid-2{grid-template-columns:1fr} }
+
+    /* Stat cards */
+    .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 22px; }
+    .stat-card .label { color: var(--muted); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
+    .stat-card .value { font-size: 32px; font-weight: 700; line-height: 1; margin-bottom: 4px; }
+    .stat-card .sub { color: var(--muted); font-size: 12px; }
+    .stat-card.accent { border-left: 3px solid var(--accent); }
+
+    /* Section headers */
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.7px; color: var(--muted); }
+    .section-badge { background: var(--accent); color: white; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
+
+    /* Card panels */
+    .panel { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 22px; }
+
+    /* Priority badges */
+    .badge { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+    .badge-high   { background: rgba(192,57,43,0.2);  color: #E74C3C; border: 1px solid rgba(192,57,43,0.4); }
+    .badge-medium { background: rgba(196,154,10,0.2); color: #F0B429; border: 1px solid rgba(196,154,10,0.4); }
+    .badge-low    { background: rgba(136,150,176,0.15); color: var(--muted); border: 1px solid var(--border); }
+    .badge-new    { background: rgba(41,128,185,0.2);  color: #5DADE2; border: 1px solid rgba(41,128,185,0.4); }
+    .badge-contacted  { background: rgba(196,154,10,0.2); color: #F0B429; }
+    .badge-responded  { background: rgba(26,138,74,0.2);  color: #2ECC71; }
+    .badge-meeting    { background: rgba(125,60,152,0.2);  color: #A569BD; }
+    .badge-noresp     { background: rgba(192,57,43,0.15);  color: #E74C3C; }
+    .badge-notrel     { background: rgba(136,150,176,0.1); color: var(--muted); }
+
+    /* Lead cards */
+    .lead-card { background: var(--card2); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 12px; position: relative; }
+    .lead-card:last-child { margin-bottom: 0; }
+    .lead-card .rank { position: absolute; top: 14px; right: 14px; font-size: 22px; font-weight: 900; color: var(--border); }
+    .lead-name { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+    .lead-meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px; }
+    .lead-score { background: var(--dark); border: 1px solid var(--border); border-radius: 6px; padding: 3px 10px; font-size: 13px; font-weight: 700; }
+    .lead-detail { color: var(--muted); font-size: 12px; line-height: 1.6; }
+    .lead-detail strong { color: var(--text); }
+    .lead-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+    .lead-link { background: var(--dark); border: 1px solid var(--border); color: var(--text); text-decoration: none; padding: 5px 12px; border-radius: 6px; font-size: 12px; transition: background 0.15s; }
+    .lead-link:hover { background: var(--border); }
+    .lead-link.maps  { border-color: rgba(41,128,185,0.5); color: #5DADE2; }
+    .lead-link.notion { border-color: rgba(136,150,176,0.4); }
+
+    /* Pipeline status */
+    .pipeline-row { display: flex; align-items: center; margin-bottom: 14px; }
+    .pipeline-row:last-child { margin-bottom: 0; }
+    .pipeline-label { width: 130px; font-size: 12px; color: var(--muted); flex-shrink: 0; }
+    .pipeline-bar-wrap { flex: 1; background: var(--dark); border-radius: 4px; height: 22px; overflow: hidden; margin: 0 12px; }
+    .pipeline-bar { height: 100%; border-radius: 4px; transition: width 0.8s ease; min-width: 4px; }
+    .pipeline-count { font-size: 13px; font-weight: 700; width: 32px; text-align: right; }
+
+    /* Recent leads table */
+    .lead-table { width: 100%; border-collapse: collapse; }
+    .lead-table th { color: var(--muted); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+    .lead-table td { padding: 10px 12px; border-bottom: 1px solid rgba(58,69,96,0.5); font-size: 13px; }
+    .lead-table tr:last-child td { border-bottom: none; }
+    .lead-table tr:hover td { background: rgba(44,54,84,0.5); }
+    .company-link { color: var(--text); text-decoration: none; font-weight: 600; }
+    .company-link:hover { color: var(--accent2); }
+
+    /* Chart containers */
+    .chart-wrap { position: relative; height: 200px; }
+
+    /* Score bar */
+    .score-value { font-weight: 700; }
+    .score-high { color: #E74C3C; }
+    .score-med  { color: #F0B429; }
+    .score-low  { color: var(--muted); }
+
+    /* Loading */
+    .loading { display: flex; align-items: center; justify-content: center; height: 200px; color: var(--muted); font-size: 13px; }
+
+    /* Today date banner */
+    .date-banner { background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.3); border-radius: 8px; padding: 10px 18px; margin-bottom: 24px; display: flex; align-items: center; gap: 10px; }
+    .date-banner .fire { font-size: 18px; }
+    .date-banner strong { color: var(--accent2); }
+
+    /* Flags */
+    .flags-text { font-size: 11px; color: var(--muted); max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-left">
+    <div class="logo">🔥</div>
+    <div>
+      <h1><span>MacFire</span> AI Scout</h1>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px;">Lead Pipeline Dashboard</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="last-updated"><span class="live-dot"></span><span id="last-updated">Loading…</span></div>
+    <button class="refresh-btn" onclick="loadData()">↻ Refresh</button>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- Today banner -->
+  <div class="date-banner" id="date-banner" style="display:none">
+    <span class="fire">🔥</span>
+    <div><strong id="today-label">Today's Run</strong> — <span id="today-count">—</span> new leads added  &nbsp;·&nbsp;
+    <span id="today-priority-high" style="color:#E74C3C;font-weight:700"></span>
+    <span id="today-priority-med"  style="color:#F0B429;font-weight:700"></span>
+    <span id="today-priority-low"  style="color:var(--muted);font-weight:700"></span>
+    </div>
+  </div>
+
+  <!-- KPI row -->
+  <div class="grid-4" id="kpi-row">
+    <div class="stat-card accent"><div class="label">Total Leads</div><div class="value" id="kpi-total">—</div><div class="sub" id="kpi-days">Scout running</div></div>
+    <div class="stat-card"><div class="label">High Priority</div><div class="value score-high" id="kpi-high">—</div><div class="sub">Score 75+</div></div>
+    <div class="stat-card"><div class="label">Contacted</div><div class="value" id="kpi-contacted">—</div><div class="sub" id="kpi-responded">0 responded</div></div>
+    <div class="stat-card"><div class="label">Meetings Booked</div><div class="value score-high" id="kpi-meetings">—</div><div class="sub">From pipeline</div></div>
+  </div>
+
+  <!-- Top 5 today + Pipeline status -->
+  <div class="grid-2-1">
+
+    <!-- Top 5 Today -->
+    <div>
+      <div class="section-header">
+        <div class="section-title">🏆 Top 5 Leads — Most Recent Run</div>
+        <div class="section-badge" id="today-badge">Today</div>
+      </div>
+      <div id="top5-container"><div class="loading panel">Loading leads…</div></div>
+    </div>
+
+    <!-- Pipeline status -->
+    <div>
+      <div class="section-header">
+        <div class="section-title">📋 Pipeline Status</div>
+      </div>
+      <div class="panel" id="pipeline-container"><div class="loading">Loading…</div></div>
+      <div style="height:16px"></div>
+
+      <!-- Priority donut -->
+      <div class="section-header">
+        <div class="section-title">Priority Split (All Time)</div>
+      </div>
+      <div class="panel">
+        <div class="chart-wrap"><canvas id="priorityChart"></canvas></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Sector + Score distribution -->
+  <div class="grid-2">
+    <div>
+      <div class="section-header"><div class="section-title">🏢 Leads by Sector</div></div>
+      <div class="panel"><div class="chart-wrap" style="height:240px"><canvas id="sectorChart"></canvas></div></div>
+    </div>
+    <div>
+      <div class="section-header"><div class="section-title">📊 Score Distribution</div></div>
+      <div class="panel"><div class="chart-wrap" style="height:240px"><canvas id="scoreChart"></canvas></div></div>
+    </div>
+  </div>
+
+  <!-- Recent leads table -->
+  <div style="margin-bottom:24px">
+    <div class="section-header">
+      <div class="section-title">📋 Recent Leads</div>
+      <div style="font-size:12px;color:var(--muted)">Latest 15 across all runs</div>
+    </div>
+    <div class="panel">
+      <div id="table-container"><div class="loading">Loading…</div></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── Chart instances ────────────────────────────────────────────────────────
+let priorityChart, sectorChart, scoreChart;
+
+const PRIORITY_COLORS  = { High: "#E74C3C", Medium: "#F0B429", Low: "#4A5568" };
+const STATUS_COLORS    = {
+  "New Lead":       "#6366F1",
+  "Contacted":      "#F0B429",
+  "Responded":      "#10B981",
+  "Meeting Booked": "#A569BD",
+  "No Response":    "#EF4444",
+  "Not Relevant":   "#546E7A",
+};
+const STATUS_BADGE_CLASS = {
+  "New Lead": "badge-new", "Contacted": "badge-contacted",
+  "Responded": "badge-responded", "Meeting Booked": "badge-meeting",
+  "No Response": "badge-noresp", "Not Relevant": "badge-notrel",
+};
+const SECTOR_COLORS = [
+  "#6366F1","#2980B9","#1A8A4A","#7D3C98","#D4AC0D","#E67E22","#1ABC9C","#818CF8","#546E7A"
+];
+
+function scoreClass(s) {
+  if (!s) return "";
+  if (s >= 75) return "score-high";
+  if (s >= 50) return "score-med";
+  return "score-low";
+}
+
+function priorityBadge(p) {
+  const cls = { High:"badge-high", Medium:"badge-medium", Low:"badge-low" }[p] || "badge-low";
+  return `<span class="badge ${cls}">${p || "—"}</span>`;
+}
+
+function statusBadge(s) {
+  const cls = STATUS_BADGE_CLASS[s] || "badge-low";
+  return `<span class="badge ${cls}">${s || "—"}</span>`;
+}
+
+// ── Top 5 cards ────────────────────────────────────────────────────────────
+function renderTop5(leads, todayDate) {
+  const el = document.getElementById("top5-container");
+  if (!leads || leads.length === 0) {
+    el.innerHTML = '<div class="panel" style="color:var(--muted);text-align:center;padding:32px">No leads yet for the most recent run.</div>';
+    return;
+  }
+  el.innerHTML = leads.map((l, i) => {
+    const score = l.score ? `<span class="lead-score ${scoreClass(l.score)}">${l.score}</span>` : "";
+    const director = l.director ? `<strong>Director:</strong> ${l.director}` : "";
+    const sector   = l.sector   ? `<strong>Sector:</strong> ${l.sector}`   : "";
+    const addr     = l.address  ? `<strong>Address:</strong> ${l.address}` : "";
+    const phone    = l.phone    ? `<strong>Phone:</strong> ${l.phone}`     : "";
+    const email    = l.email    ? `<strong>Email:</strong> <a href="mailto:${l.email}" style="color:var(--blue)">${l.email}</a>` : "";
+    const flags    = l.flags    ? `<div class="flags-text" title="${l.flags}">⚑ ${l.flags}</div>` : "";
+
+    const mapsBtn   = l.maps_url    ? `<a class="lead-link maps"   href="${l.maps_url}"   target="_blank">📍 Maps</a>` : "";
+    const streetBtn = l.street_view ? `<a class="lead-link"         href="${l.street_view}" target="_blank">📷 Street View</a>` : "";
+    const notionBtn = l.notion_url  ? `<a class="lead-link notion"  href="${l.notion_url}"  target="_blank">↗ Notion</a>` : "";
+
+    return `
+    <div class="lead-card">
+      <div class="rank">#${i+1}</div>
+      <div class="lead-name">${l.company}</div>
+      <div class="lead-meta">
+        ${priorityBadge(l.priority)}
+        ${score}
+        ${l.sector ? `<span style="color:var(--muted);font-size:12px">${l.sector}</span>` : ""}
+        ${l.postcode ? `<span style="color:var(--muted);font-size:12px">${l.postcode}</span>` : ""}
+        ${statusBadge(l.status)}
+      </div>
+      <div class="lead-detail">
+        ${[director, sector, addr, phone, email].filter(Boolean).join(" &nbsp;·&nbsp; ")}
+      </div>
+      ${flags}
+      <div class="lead-actions">${mapsBtn}${streetBtn}${notionBtn}</div>
+    </div>`;
+  }).join("");
+}
+
+// ── Pipeline status bars ───────────────────────────────────────────────────
+function renderPipeline(counts) {
+  const el    = document.getElementById("pipeline-container");
+  const total = Object.values(counts).reduce((a, b) => a + b, 0) || 1;
+  const order = ["New Lead", "Contacted", "Responded", "Meeting Booked", "No Response", "Not Relevant"];
+  el.innerHTML = order.map(s => {
+    const count = counts[s] || 0;
+    const pct   = Math.round((count / total) * 100);
+    const color = STATUS_COLORS[s] || "#4A5568";
+    return `
+    <div class="pipeline-row">
+      <div class="pipeline-label">${s}</div>
+      <div class="pipeline-bar-wrap">
+        <div class="pipeline-bar" style="width:${pct}%;background:${color}"></div>
+      </div>
+      <div class="pipeline-count">${count}</div>
+    </div>`;
+  }).join("");
+}
+
+// ── Priority donut ─────────────────────────────────────────────────────────
+function renderPriorityChart(counts) {
+  const ctx = document.getElementById("priorityChart").getContext("2d");
+  if (priorityChart) priorityChart.destroy();
+  priorityChart = new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      labels: ["High", "Medium", "Low"],
+      datasets: [{ data: [counts.High||0, counts.Medium||0, counts.Low||0],
+        backgroundColor: ["#E74C3C", "#F0B429", "#4A5568"],
+        borderColor: "#242D40", borderWidth: 3 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      cutout: "65%",
+      plugins: {
+        legend: { position: "right", labels: { color: "#8896B0", font: { size: 12 }, padding: 14 } }
+      }
+    }
+  });
+}
+
+// ── Sector bar chart ───────────────────────────────────────────────────────
+function renderSectorChart(counts) {
+  const ctx    = document.getElementById("sectorChart").getContext("2d");
+  const labels = Object.keys(counts);
+  const data   = Object.values(counts);
+  if (sectorChart) sectorChart.destroy();
+  sectorChart = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{ data, backgroundColor: labels.map((_, i) => SECTOR_COLORS[i % SECTOR_COLORS.length]),
+        borderWidth: 0, borderRadius: 4 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, indexAxis: "y",
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: "#8896B0" }, grid: { color: "rgba(58,69,96,0.4)" } },
+        y: { ticks: { color: "#E8ECF4", font: { size: 11 } }, grid: { display: false } }
+      }
+    }
+  });
+}
+
+// ── Score distribution chart ───────────────────────────────────────────────
+function renderScoreChart(buckets) {
+  const ctx = document.getElementById("scoreChart").getContext("2d");
+  if (scoreChart) scoreChart.destroy();
+  const labels = Object.keys(buckets);
+  const data   = Object.values(buckets);
+  const colors = ["#2ECC71", "#6366F1", "#F0B429", "#818CF8", "#546E7A"];
+  scoreChart = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{ data, backgroundColor: colors, borderWidth: 0, borderRadius: 4 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: "#E8ECF4" }, grid: { display: false } },
+        y: { ticks: { color: "#8896B0" }, grid: { color: "rgba(58,69,96,0.4)" } }
+      }
+    }
+  });
+}
+
+// ── Recent leads table ─────────────────────────────────────────────────────
+function renderTable(leads) {
+  const el = document.getElementById("table-container");
+  if (!leads || leads.length === 0) {
+    el.innerHTML = '<div style="color:var(--muted);text-align:center;padding:24px">No leads yet.</div>';
+    return;
+  }
+  el.innerHTML = `
+  <table class="lead-table">
+    <thead><tr>
+      <th>Company</th><th>Priority</th><th>Score</th>
+      <th>Sector</th><th>Status</th><th>Director</th><th>Phone</th><th>Run Date</th>
+    </tr></thead>
+    <tbody>
+    ${leads.map(l => `
+      <tr>
+        <td><a class="company-link" href="${l.notion_url || '#'}" target="_blank">${l.company}</a></td>
+        <td>${priorityBadge(l.priority)}</td>
+        <td><span class="score-value ${scoreClass(l.score)}">${l.score || "—"}</span></td>
+        <td style="color:var(--muted)">${l.sector || "—"}</td>
+        <td>${statusBadge(l.status)}</td>
+        <td style="color:var(--muted)">${l.director || "—"}</td>
+        <td style="color:var(--muted)">${l.phone || (l.email ? `<a href="mailto:${l.email}" style="color:var(--blue);font-size:11px">${l.email}</a>` : "—")}</td>
+        <td style="color:var(--muted)">${l.scout_date || "—"}</td>
+      </tr>`).join("")}
+    </tbody>
+  </table>`;
+}
+
+// ── Main load ──────────────────────────────────────────────────────────────
+async function loadData() {
+  document.getElementById("last-updated").textContent = "Refreshing…";
+  try {
+    const res  = await fetch("/api/stats");
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error);
+    const d = json.data;
+
+    // KPIs
+    document.getElementById("kpi-total").textContent     = d.total_leads;
+    document.getElementById("kpi-days").textContent      = `${d.days_running} day${d.days_running !== 1 ? "s" : ""} running`;
+    document.getElementById("kpi-high").textContent      = d.priority_counts.High || 0;
+    document.getElementById("kpi-contacted").textContent = d.contacted;
+    document.getElementById("kpi-responded").textContent = `${d.responded} responded`;
+    document.getElementById("kpi-meetings").textContent  = d.meetings;
+
+    // Today banner
+    if (d.today_date) {
+      document.getElementById("date-banner").style.display = "flex";
+      document.getElementById("today-label").textContent   = `Run ${d.today_date}`;
+      document.getElementById("today-count").textContent   = d.today_count;
+      document.getElementById("today-priority-high").textContent = d.today_priority.High  ? `${d.today_priority.High} High  ` : "";
+      document.getElementById("today-priority-med").textContent  = d.today_priority.Medium ? `${d.today_priority.Medium} Medium  ` : "";
+      document.getElementById("today-priority-low").textContent  = d.today_priority.Low   ? `${d.today_priority.Low} Low` : "";
+      document.getElementById("today-badge").textContent  = d.today_date;
+    }
+
+    renderTop5(d.top5_today, d.today_date);
+    renderPipeline(d.status_counts);
+    renderPriorityChart(d.priority_counts);
+    renderSectorChart(d.sector_counts);
+    renderScoreChart(d.score_buckets);
+    renderTable(d.recent);
+
+    document.getElementById("last-updated").textContent = `Updated ${d.last_refreshed}`;
+  } catch (err) {
+    document.getElementById("last-updated").textContent = "Error — " + err.message;
+  }
+}
+
+// Auto-refresh every 60 seconds
+loadData();
+setInterval(loadData, 60000);
+</script>
+</body>
+</html>
