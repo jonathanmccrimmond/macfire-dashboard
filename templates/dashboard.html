@@ -106,6 +106,16 @@
     .lead-table tr:hover td { background: rgba(44,54,84,0.5); }
     .company-link { color: var(--text); text-decoration: none; font-weight: 600; }
     .company-link:hover { color: var(--accent2); }
+    .lead-action-select {
+      background: var(--card2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 12px;
+      padding: 5px 8px;
+      min-width: 170px;
+    }
+    .lead-action-select:disabled { opacity: 0.6; cursor: not-allowed; }
 
     /* Chart containers */
     .chart-wrap { position: relative; height: 200px; }
@@ -429,7 +439,7 @@ function renderTable(leads) {
   <table class="lead-table">
     <thead><tr>
       <th>Company</th><th>Priority</th><th>Score</th>
-      <th>Sector</th><th>Status</th><th>Director</th><th>Phone</th><th>Run Date</th>
+      <th>Sector</th><th>Status</th><th>Director</th><th>Phone</th><th>Run Date</th><th>Action</th>
     </tr></thead>
     <tbody>
     ${leads.map(l => {
@@ -438,6 +448,11 @@ function renderTable(leads) {
       const contactCell = l.phone
         ? l.phone
         : (l.email ? `<a href="mailto:${l.email}" style="color:var(--accent2);font-size:11px">${l.email}</a>` : "—");
+      const actionOptions = `
+        <option value="">Actions</option>
+        <option value="mark_not_relevant">Mark as Not Relevant</option>
+        <option value="contact_lead" disabled>Instruct agent to contact (soon)</option>
+      `;
       return `
       <tr${trCls}>
         <td><a class="company-link" href="${l.notion_url || '#'}" target="_blank">${l.company}</a></td>
@@ -448,10 +463,55 @@ function renderTable(leads) {
         <td style="color:var(--muted)">${l.director || "—"}</td>
         <td style="color:var(--muted)">${contactCell}</td>
         <td style="color:var(--muted)">${l.scout_date || "—"}</td>
+        <td>
+          <select class="lead-action-select" onchange="handleLeadAction(this, '${l.id}', '${(l.company || '').replace(/'/g, \"&#39;\")}')">
+            ${actionOptions}
+          </select>
+        </td>
       </tr>`;
     }).join("")}
     </tbody>
   </table>`;
+}
+
+async function handleLeadAction(selectEl, leadId, companyName) {
+  const action = selectEl.value;
+  if (!action) return;
+
+  if (action === "contact_lead") {
+    alert("Instruct agent to contact is not enabled yet.");
+    selectEl.value = "";
+    return;
+  }
+
+  const originalLabel = selectEl.options[0].textContent;
+  selectEl.disabled = true;
+  selectEl.options[0].textContent = "Applying…";
+
+  try {
+    const res = await fetch("/api/leads/action", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lead_id: leadId, action })
+    });
+    const json = await res.json();
+    if (!res.ok || !json.ok) {
+      throw new Error(json.error || "Action failed");
+    }
+
+    if (action === "mark_not_relevant") {
+      selectEl.options[0].textContent = "Marked Not Relevant";
+    } else {
+      selectEl.options[0].textContent = "Updated";
+    }
+    await loadData();
+  } catch (err) {
+    alert(`Could not update ${companyName}: ${err.message}`);
+    selectEl.options[0].textContent = originalLabel;
+  } finally {
+    selectEl.value = "";
+    selectEl.disabled = false;
+  }
 }
 
 // ── Main load ──────────────────────────────────────────────────────────────

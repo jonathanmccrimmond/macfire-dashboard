@@ -7,7 +7,7 @@ Deploy:       See README in this folder — Render.com free tier, ~5 mins.
 """
 
 import os, time, datetime, functools
-from flask import Flask, jsonify, render_template
+from flask import Flask, jsonify, render_template, request
 import requests
 
 # ── Config ────────────────────────────────────────────────────────────────────
@@ -115,6 +115,29 @@ def cached(key, fn):
     return _cache[key]
 
 
+def invalidate_cache(key=None):
+    """Invalidate cache entries so UI updates reflect state changes quickly."""
+    if key is None:
+        _cache.clear()
+        _cache_ts.clear()
+        return
+    _cache.pop(key, None)
+    _cache_ts.pop(key, None)
+
+
+def notion_update_status(page_id, status_name):
+    """Update the Status select property for a Notion page."""
+    payload = {"properties": {"Status": {"select": {"name": status_name}}}}
+    r = requests.patch(
+        f"https://api.notion.com/v1/pages/{page_id}",
+        headers=NOTION_HEADERS,
+        json=payload,
+        timeout=20,
+    )
+    r.raise_for_status()
+    return r.json()
+
+
 def fetch_stats():
     pages = _query_all(
         sorts=[{"property": "Scout Run Date", "direction": "descending"}]
@@ -215,6 +238,49 @@ def api_stats():
     try:
         data = cached("stats", fetch_stats)
         return jsonify({"ok": True, "data": data})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/leads/action", methods=["POST"])
+def api_lead_action():
+    """
+    Lead row actions.
+    Current support:
+      - mark_not_relevant: sets Notion Status to "Not Relevant"
+    Future-ready:
+      - contact_lead: reserved for agent-triggered outreach workflow
+    """
+    try:
+        payload = request.get_json(silent=True) or {}
+        lead_id = (payload.get("lead_id") or "").strip()
+        action = (payload.get("action") or "").strip()
+
+        if not lead_id:
+            return jsonify({"ok": False, "error": "Missing lead_id"}), 400
+        if not action:
+            return jsonify({"ok": False, "error": "Missing action"}), 400
+
+        if action == "mark_not_relevant":
+            notion_update_status(lead_id, "Not Relevant")
+            invalidate_cache("stats")
+            return jsonify({"ok": True, "updated_status": "Not Relevant"})
+
+        if action == "contact_lead":
+            return jsonify({
+                "ok": False,
+                "error": "Action not implemented yet",
+                "action": action,
+            }), 501
+
+        return jsonify({"ok": False, "error": f"Unsupported action: {action}"}), 400
+    except requests.HTTPError as e:
+        msg = ""
+        try:
+            msg = e.response.text
+        except Exception:
+            msg = str(e)
+        return jsonify({"ok": False, "error": f"Notion update failed: {msg}"}), 502
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
