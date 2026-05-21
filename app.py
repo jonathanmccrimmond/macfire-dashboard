@@ -181,16 +181,6 @@ def fetch_stats():
 
     # Unique run dates
     run_dates = scout_dates
-
-    # Hot leads — score ≥ 70, New Lead, High/Medium priority, contactable
-    hot_leads = [
-        l for l in leads
-        if (l.get("score") or 0) >= 70
-        and l.get("status") == "New Lead"
-        and l.get("priority") in ("High", "Medium")
-        and (l.get("phone") or l.get("email"))
-    ]
-    hot_leads = sorted(hot_leads, key=lambda l: l.get("score") or 0, reverse=True)[:10]
     contactable_count = sum(1 for l in leads if l.get("phone") or l.get("email"))
 
     return {
@@ -209,7 +199,6 @@ def fetch_stats():
         "score_buckets":     score_buckets,
         "run_dates":         run_dates,
         "days_running":      len(run_dates),
-        "hot_leads":         hot_leads,
         "contactable_count": contactable_count,
         "last_refreshed":    datetime.datetime.now().strftime("%H:%M:%S"),
     }
