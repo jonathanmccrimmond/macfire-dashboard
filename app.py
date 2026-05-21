@@ -244,13 +244,7 @@ def api_stats():
 
 @app.route("/api/leads/action", methods=["POST"])
 def api_lead_action():
-    """
-    Lead row actions.
-    Current support:
-      - mark_not_relevant: sets Notion Status to "Not Relevant"
-    Future-ready:
-      - contact_lead: reserved for agent-triggered outreach workflow
-    """
+    """Lead row action endpoint: currently supports mark_not_relevant."""
     try:
         payload = request.get_json(silent=True) or {}
         lead_id = (payload.get("lead_id") or "").strip()
@@ -265,13 +259,6 @@ def api_lead_action():
             notion_update_status(lead_id, "Not Relevant")
             invalidate_cache("stats")
             return jsonify({"ok": True, "updated_status": "Not Relevant"})
-
-        if action == "contact_lead":
-            return jsonify({
-                "ok": False,
-                "error": "Action not implemented yet",
-                "action": action,
-            }), 501
 
         return jsonify({"ok": False, "error": f"Unsupported action: {action}"}), 400
     except requests.HTTPError as e:
