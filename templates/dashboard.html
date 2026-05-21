@@ -4,6 +4,8 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>MacFire AI Scout — Lead Dashboard</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}"/>
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.svg') }}"/>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <style>
     :root {
@@ -124,6 +126,41 @@
 
     /* Flags */
     .flags-text { font-size: 11px; color: var(--muted); max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* Grid-5 for KPI row */
+    .grid-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 24px; }
+    @media (max-width: 1200px) { .grid-5 { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 700px)  { .grid-5 { grid-template-columns: repeat(2, 1fr); } }
+
+    /* Hot lead cards */
+    .hot-leads-grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
+    @media (min-width: 600px) { .hot-leads-grid { grid-template-columns: 1fr 1fr; } }
+    .hot-lead-card { background: var(--card2); border: 1px solid var(--border); border-left: 4px solid var(--green); border-radius: 10px; padding: 16px 16px 14px; position: relative; }
+    .hl-rank { position: absolute; top: 12px; right: 14px; font-size: 20px; font-weight: 900; color: var(--border); }
+    .hl-company { font-size: 16px; font-weight: 700; margin-bottom: 8px; padding-right: 32px; }
+    .hl-company a { color: var(--text); text-decoration: none; }
+    .hl-company a:hover { color: var(--accent2); }
+    .hl-meta { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; margin-bottom: 9px; }
+    .score-pill { display: inline-block; padding: 3px 10px; border-radius: 10px; font-size: 12px; font-weight: 700; }
+    .score-pill-green  { background: rgba(16,185,129,0.18); color: #10B981; border: 1px solid rgba(16,185,129,0.4); }
+    .score-pill-indigo { background: rgba(99,102,241,0.18); color: #818CF8; border: 1px solid rgba(99,102,241,0.4); }
+    .score-pill-amber  { background: rgba(245,158,11,0.18);  color: #F59E0B; border: 1px solid rgba(245,158,11,0.4); }
+    .hl-detail { color: var(--muted); font-size: 12px; line-height: 1.65; }
+    .hl-contact { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 9px; align-items: center; }
+    .hl-contact a { color: var(--text); text-decoration: none; font-size: 13px; }
+    .hl-contact a:hover { color: var(--accent2); }
+    .hl-contact .hl-maps { color: #5DADE2; }
+    .hl-trigger { font-style: italic; color: var(--muted); font-size: 11px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+    .hl-date { font-size: 11px; color: var(--muted); margin-top: 6px; }
+    .hot-leads-empty { color: var(--muted); text-align: center; padding: 32px; font-size: 13px; }
+    .section-title-hot { font-size: 14px; font-weight: 700; color: var(--green); letter-spacing: -0.2px; }
+
+    /* Table quality filter */
+    .toggle-link { cursor: pointer; color: var(--muted); font-size: 12px; text-decoration: underline; user-select: none; }
+    .toggle-link:hover { color: var(--text); }
+    .lead-table tr.low-quality { display: none; }
+    .lead-table tr.low-quality.shown { display: table-row; }
+    .lead-table tr.low-quality.shown td { opacity: 0.45; font-style: italic; }
   </style>
 </head>
 <body>
@@ -156,11 +193,24 @@
   </div>
 
   <!-- KPI row -->
-  <div class="grid-4" id="kpi-row">
+  <div class="grid-5" id="kpi-row">
     <div class="stat-card accent"><div class="label">Total Leads</div><div class="value" id="kpi-total">—</div><div class="sub" id="kpi-days">Scout running</div></div>
     <div class="stat-card"><div class="label">High Priority</div><div class="value score-high" id="kpi-high">—</div><div class="sub">Score 75+</div></div>
     <div class="stat-card"><div class="label">Contacted</div><div class="value" id="kpi-contacted">—</div><div class="sub" id="kpi-responded">0 responded</div></div>
     <div class="stat-card"><div class="label">Meetings Booked</div><div class="value score-high" id="kpi-meetings">—</div><div class="sub">From pipeline</div></div>
+    <div class="stat-card" style="border-left:3px solid var(--green)"><div class="label">Contactable</div><div class="value" style="color:var(--green)" id="kpi-contactable">—</div><div class="sub">have phone or email</div></div>
+  </div>
+
+  <!-- Hot Leads -->
+  <div style="margin-bottom:28px" id="hot-leads-section">
+    <div class="section-header">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="section-title-hot">🔥 Today's Hot Leads</div>
+        <span id="hot-leads-badge" style="background:var(--green);color:#fff;font-size:11px;font-weight:700;padding:2px 9px;border-radius:10px">0</span>
+      </div>
+      <div style="font-size:12px;color:var(--muted)">Score ≥70 · New Lead · High/Medium · Contactable</div>
+    </div>
+    <div id="hot-leads-container"><div class="panel loading">Loading hot leads…</div></div>
   </div>
 
   <!-- Top 5 today + Pipeline status -->
@@ -210,7 +260,10 @@
   <div style="margin-bottom:24px">
     <div class="section-header">
       <div class="section-title">📋 Recent Leads</div>
-      <div style="font-size:12px;color:var(--muted)">Latest 15 across all runs</div>
+      <div style="display:flex;align-items:center;gap:14px">
+        <span style="font-size:12px;color:var(--muted)">Latest 15 across all runs</span>
+        <span class="toggle-link" id="quality-toggle" onclick="toggleLowQuality()">Show low-quality</span>
+      </div>
     </div>
     <div class="panel">
       <div id="table-container"><div class="loading">Loading…</div></div>
@@ -256,6 +309,68 @@ function priorityBadge(p) {
 function statusBadge(s) {
   const cls = STATUS_BADGE_CLASS[s] || "badge-low";
   return `<span class="badge ${cls}">${s || "—"}</span>`;
+}
+
+// ── Hot Leads ──────────────────────────────────────────────────────────────
+function scorePill(s) {
+  if (s == null) return "";
+  var cls = s >= 90 ? "score-pill-green" : s >= 75 ? "score-pill-indigo" : "score-pill-amber";
+  return '<span class="score-pill ' + cls + '">' + s + '</span>';
+}
+
+function renderHotLeads(leads) {
+  var el    = document.getElementById("hot-leads-container");
+  var badge = document.getElementById("hot-leads-badge");
+  badge.textContent = leads.length;
+  if (!leads || leads.length === 0) {
+    el.innerHTML = '<div class="panel hot-leads-empty">No hot leads today — check back after the morning scout run.</div>';
+    return;
+  }
+  var cards = leads.map(function(l, i) {
+    var companyHtml = l.notion_url
+      ? '<a href="' + l.notion_url + '" target="_blank">' + l.company + '</a>'
+      : l.company;
+    var pill    = scorePill(l.score);
+    var pri     = priorityBadge(l.priority);
+    var sector  = l.sector  ? '<span style="color:var(--muted);font-size:12px">' + l.sector + '</span>' : "";
+    var addrTxt = l.address || l.postcode || "";
+    var addr    = addrTxt   ? '<div style="margin-top:5px">' + addrTxt + '</div>' : "";
+    var phoneLink = l.phone
+      ? '<a href="tel:' + l.phone + '">📞 ' + l.phone + '</a>'
+      : "";
+    var emailLink = l.email
+      ? '<a href="mailto:' + l.email + '">✉️ ' + l.email + '</a>'
+      : "";
+    var mapsLink = l.maps_url
+      ? '<a href="' + l.maps_url + '" target="_blank" class="hl-maps">🗺️ Map</a>'
+      : "";
+    var trigger   = l.trigger    ? '<div class="hl-trigger">' + l.trigger + '</div>'       : "";
+    var scoutDate = l.scout_date ? '<div class="hl-date">Scouted ' + l.scout_date + '</div>' : "";
+    return [
+      '<div class="hot-lead-card">',
+        '<div class="hl-rank">#' + (i + 1) + '</div>',
+        '<div class="hl-company">' + companyHtml + '</div>',
+        '<div class="hl-meta">' + pill + ' ' + pri + ' ' + sector + '</div>',
+        '<div class="hl-detail">' + addr + '</div>',
+        '<div class="hl-contact">' + phoneLink + emailLink + mapsLink + '</div>',
+        trigger,
+        scoutDate,
+      '</div>'
+    ].join("");
+  }).join("");
+  el.innerHTML = '<div class="hot-leads-grid">' + cards + '</div>';
+}
+
+// ── Low-quality toggle ─────────────────────────────────────────────────────
+var _showLowQuality = false;
+function toggleLowQuality() {
+  _showLowQuality = !_showLowQuality;
+  var rows = document.querySelectorAll(".lead-table tr.low-quality");
+  for (var i = 0; i < rows.length; i++) {
+    if (_showLowQuality) { rows[i].classList.add("shown"); }
+    else                 { rows[i].classList.remove("shown"); }
+  }
+  document.getElementById("quality-toggle").textContent = _showLowQuality ? "Hide low-quality" : "Show low-quality";
 }
 
 // ── Top 5 cards ────────────────────────────────────────────────────────────
@@ -402,17 +517,24 @@ function renderTable(leads) {
       <th>Sector</th><th>Status</th><th>Director</th><th>Phone</th><th>Run Date</th>
     </tr></thead>
     <tbody>
-    ${leads.map(l => `
-      <tr>
+    ${leads.map(l => {
+      const isLow = (l.score || 0) < 50 || l.status === "Not Relevant";
+      const trCls = isLow ? ' class="low-quality"' : '';
+      const contactCell = l.phone
+        ? l.phone
+        : (l.email ? `<a href="mailto:${l.email}" style="color:var(--accent2);font-size:11px">${l.email}</a>` : "—");
+      return `
+      <tr${trCls}>
         <td><a class="company-link" href="${l.notion_url || '#'}" target="_blank">${l.company}</a></td>
         <td>${priorityBadge(l.priority)}</td>
         <td><span class="score-value ${scoreClass(l.score)}">${l.score || "—"}</span></td>
         <td style="color:var(--muted)">${l.sector || "—"}</td>
         <td>${statusBadge(l.status)}</td>
         <td style="color:var(--muted)">${l.director || "—"}</td>
-        <td style="color:var(--muted)">${l.phone || (l.email ? `<a href="mailto:${l.email}" style="color:var(--blue);font-size:11px">${l.email}</a>` : "—")}</td>
+        <td style="color:var(--muted)">${contactCell}</td>
         <td style="color:var(--muted)">${l.scout_date || "—"}</td>
-      </tr>`).join("")}
+      </tr>`;
+    }).join("")}
     </tbody>
   </table>`;
 }
@@ -427,12 +549,13 @@ async function loadData() {
     const d = json.data;
 
     // KPIs
-    document.getElementById("kpi-total").textContent     = d.total_leads;
-    document.getElementById("kpi-days").textContent      = `${d.days_running} day${d.days_running !== 1 ? "s" : ""} running`;
-    document.getElementById("kpi-high").textContent      = d.priority_counts.High || 0;
-    document.getElementById("kpi-contacted").textContent = d.contacted;
-    document.getElementById("kpi-responded").textContent = `${d.responded} responded`;
-    document.getElementById("kpi-meetings").textContent  = d.meetings;
+    document.getElementById("kpi-total").textContent        = d.total_leads;
+    document.getElementById("kpi-days").textContent         = `${d.days_running} day${d.days_running !== 1 ? "s" : ""} running`;
+    document.getElementById("kpi-high").textContent         = d.priority_counts.High || 0;
+    document.getElementById("kpi-contacted").textContent    = d.contacted;
+    document.getElementById("kpi-responded").textContent    = `${d.responded} responded`;
+    document.getElementById("kpi-meetings").textContent     = d.meetings;
+    document.getElementById("kpi-contactable").textContent  = d.contactable_count || 0;
 
     // Today banner
     if (d.today_date) {
@@ -445,6 +568,7 @@ async function loadData() {
       document.getElementById("today-badge").textContent  = d.today_date;
     }
 
+    renderHotLeads(d.hot_leads || []);
     renderTop5(d.top5_today, d.today_date);
     renderPipeline(d.status_counts);
     renderPriorityChart(d.priority_counts);

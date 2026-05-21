@@ -182,23 +182,36 @@ def fetch_stats():
     # Unique run dates
     run_dates = scout_dates
 
+    # Hot leads — score ≥ 70, New Lead, High/Medium priority, contactable
+    hot_leads = [
+        l for l in leads
+        if (l.get("score") or 0) >= 70
+        and l.get("status") == "New Lead"
+        and l.get("priority") in ("High", "Medium")
+        and (l.get("phone") or l.get("email"))
+    ]
+    hot_leads = sorted(hot_leads, key=lambda l: l.get("score") or 0, reverse=True)[:10]
+    contactable_count = sum(1 for l in leads if l.get("phone") or l.get("email"))
+
     return {
-        "total_leads":      len(leads),
-        "today_date":       today_date,
-        "today_count":      len(today_leads),
-        "today_priority":   today_priority,
-        "top5_today":       top5_today,
-        "status_counts":    status_counts,
-        "priority_counts":  priority_counts,
-        "sector_counts":    sector_counts,
-        "contacted":        contacted,
-        "responded":        responded,
-        "meetings":         meetings,
-        "recent":           recent,
-        "score_buckets":    score_buckets,
-        "run_dates":        run_dates,
-        "days_running":     len(run_dates),
-        "last_refreshed":   datetime.datetime.now().strftime("%H:%M:%S"),
+        "total_leads":       len(leads),
+        "today_date":        today_date,
+        "today_count":       len(today_leads),
+        "today_priority":    today_priority,
+        "top5_today":        top5_today,
+        "status_counts":     status_counts,
+        "priority_counts":   priority_counts,
+        "sector_counts":     sector_counts,
+        "contacted":         contacted,
+        "responded":         responded,
+        "meetings":          meetings,
+        "recent":            recent,
+        "score_buckets":     score_buckets,
+        "run_dates":         run_dates,
+        "days_running":      len(run_dates),
+        "hot_leads":         hot_leads,
+        "contactable_count": contactable_count,
+        "last_refreshed":    datetime.datetime.now().strftime("%H:%M:%S"),
     }
 
 
