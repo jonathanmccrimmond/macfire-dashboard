@@ -50,6 +50,8 @@
 
     /* Stat cards */
     .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 22px; }
+    .stat-card.clickable { cursor: pointer; }
+    .stat-card.clickable:hover { border-color: var(--accent2); }
     .stat-card .label { color: var(--muted); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
     .stat-card .value { font-size: 32px; font-weight: 700; line-height: 1; margin-bottom: 4px; }
     .stat-card .sub { color: var(--muted); font-size: 12px; }
@@ -190,24 +192,26 @@
   <div class="grid-8" id="kpi-row">
     <div class="stat-card accent"><div class="label">Total Leads</div><div class="value" id="kpi-total">—</div><div class="sub" id="kpi-days">Scout running</div></div>
     <div class="stat-card"><div class="label">High Priority</div><div class="value score-high" id="kpi-high">—</div><div class="sub">Score 75+</div></div>
-    <div class="stat-card"><div class="label">Qualified Leads</div><div class="value" style="color:var(--green)" id="kpi-ready">—</div><div class="sub">High priority and outreach-ready</div></div>
-    <div class="stat-card"><div class="label">Contact Info Required</div><div class="value" style="color:var(--amber)" id="kpi-research">—</div><div class="sub">High priority, needs contact discovery</div></div>
-    <div class="stat-card"><div class="label">Company Details Required</div><div class="value" style="color:var(--muted)" id="kpi-insufficient">—</div><div class="sub">High priority, profile incomplete</div></div>
+    <div class="stat-card clickable" id="card-qualified"><div class="label">Qualified Leads</div><div class="value" style="color:var(--green)" id="kpi-ready">—</div><div class="sub">High priority and outreach-ready</div></div>
+    <div class="stat-card clickable" id="card-contact-required"><div class="label">Contact Info Required</div><div class="value" style="color:var(--amber)" id="kpi-research">—</div><div class="sub">High priority, needs contact discovery</div></div>
+    <div class="stat-card clickable" id="card-company-required"><div class="label">Company Details Required</div><div class="value" style="color:var(--muted)" id="kpi-insufficient">—</div><div class="sub">High priority, profile incomplete</div></div>
     <div class="stat-card"><div class="label">Contacted</div><div class="value" id="kpi-contacted">—</div><div class="sub" id="kpi-responded">0 responded</div></div>
     <div class="stat-card"><div class="label">Meetings Booked</div><div class="value score-high" id="kpi-meetings">—</div><div class="sub">From pipeline</div></div>
-    <div class="stat-card"><div class="label">Contracted</div><div class="value" style="color:var(--green)" id="kpi-contracted">—</div><div class="sub">Signed and now a customer</div></div>
+    <div class="stat-card clickable" id="card-contracted"><div class="label">Contracted</div><div class="value" style="color:var(--green)" id="kpi-contracted">—</div><div class="sub">Signed and now a customer</div></div>
   </div>
 
   <!-- Top 10 + Pipeline status -->
   <div class="grid-2-1">
 
-    <!-- Top 10 Leads -->
+    <!-- Qualified Leads -->
     <div>
       <div class="section-header">
-        <div class="section-title">🏆 Top 10 Leads</div>
-        <div class="section-badge" id="today-badge">All Time</div>
+        <div class="section-title">🏆 Qualified Leads</div>
+        <div class="section-badge" id="qualified-count-badge">0</div>
       </div>
-      <div id="top10-container"><div class="loading panel">Loading leads…</div></div>
+      <div id="qualified-section">
+        <div id="top10-container"><div class="loading panel">Loading leads…</div></div>
+      </div>
     </div>
 
     <!-- Pipeline status -->
@@ -238,13 +242,33 @@
   </div>
 
   <!-- Enrichment queue focus -->
-  <div style="margin-bottom:24px">
+  <div style="margin-bottom:24px" id="contact-required-section">
     <div class="section-header">
-      <div class="section-title">🔎 Enrichment Focus Queue</div>
-      <span style="font-size:12px;color:var(--muted)">Priority leads with no contact details</span>
+      <div class="section-title">🔎 Contact Info Required</div>
+      <span style="font-size:12px;color:var(--muted)">High-priority leads with no contact details</span>
     </div>
     <div class="panel">
       <div id="enrichment-focus-container"><div class="loading">Loading…</div></div>
+    </div>
+  </div>
+
+  <div style="margin-bottom:24px" id="company-required-section">
+    <div class="section-header">
+      <div class="section-title">🧩 Company Details Required</div>
+      <span style="font-size:12px;color:var(--muted)">High-priority leads that need core profile completion</span>
+    </div>
+    <div class="panel">
+      <div id="company-required-container"><div class="loading">Loading…</div></div>
+    </div>
+  </div>
+
+  <div style="margin-bottom:24px" id="contracted-section">
+    <div class="section-header">
+      <div class="section-title">✅ Contracted Customers</div>
+      <span style="font-size:12px;color:var(--muted)">Leads converted to customers</span>
+    </div>
+    <div class="panel">
+      <div id="contracted-container"><div class="loading">Loading…</div></div>
     </div>
   </div>
 
@@ -337,7 +361,7 @@ function toggleLowQuality() {
 function renderTopLeads(leads) {
   const el = document.getElementById("top10-container");
   if (!leads || leads.length === 0) {
-    el.innerHTML = '<div class="panel" style="color:var(--muted);text-align:center;padding:32px">No top leads available.</div>';
+    el.innerHTML = '<div class="panel" style="color:var(--muted);text-align:center;padding:32px">No qualified leads available.</div>';
     return;
   }
   el.innerHTML = leads.map((l, i) => {
@@ -499,6 +523,41 @@ function renderEnrichmentFocus(leads) {
   </table>`;
 }
 
+function renderLeadListTable(containerId, leads, emptyText) {
+  const el = document.getElementById(containerId);
+  if (!leads || leads.length === 0) {
+    el.innerHTML = `<div style="color:var(--muted);text-align:center;padding:24px">${emptyText}</div>`;
+    return;
+  }
+
+  el.innerHTML = `
+  <table class="lead-table">
+    <thead><tr>
+      <th>Company</th><th>Priority</th><th>Queue</th><th>Score</th><th>Website</th><th>Status</th><th>Next Best Action</th><th>Run Date</th>
+    </tr></thead>
+    <tbody>
+    ${leads.map(l => `
+      <tr>
+        <td><a class="company-link" href="${l.notion_url || '#'}" target="_blank">${l.company}</a></td>
+        <td>${priorityBadge(l.priority)}</td>
+        <td>${queueBadge(l.enrichment_queue)}</td>
+        <td><span class="score-value ${scoreClass(l.score)}">${l.score || "—"}</span></td>
+        <td style="color:var(--muted)">${titleCaseLabel(l.website_confidence || "Not Available")}</td>
+        <td>${statusBadge(l.status)}</td>
+        <td style="color:var(--muted)">${l.next_best_action || "—"}</td>
+        <td style="color:var(--muted)">${l.scout_date || "—"}</td>
+      </tr>
+    `).join("")}
+    </tbody>
+  </table>`;
+}
+
+function scrollToSection(sectionId) {
+  const section = document.getElementById(sectionId);
+  if (!section) return;
+  section.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 // ── Recent leads table ─────────────────────────────────────────────────────
 function renderTable(leads) {
   const el = document.getElementById("table-container");
@@ -593,11 +652,13 @@ async function loadData() {
       document.getElementById("today-priority-high").textContent = d.today_priority.High  ? `${d.today_priority.High} High  ` : "";
       document.getElementById("today-priority-med").textContent  = d.today_priority.Medium ? `${d.today_priority.Medium} Medium  ` : "";
       document.getElementById("today-priority-low").textContent  = d.today_priority.Low   ? `${d.today_priority.Low} Low` : "";
-      document.getElementById("today-badge").textContent  = d.today_date;
     }
 
-    renderTopLeads(d.top10_leads);
-    renderEnrichmentFocus(d.enrichment_focus || []);
+    renderTopLeads(d.qualified_leads || []);
+    document.getElementById("qualified-count-badge").textContent = String((d.qualified_leads || []).length);
+    renderEnrichmentFocus(d.contact_info_required_leads || []);
+    renderLeadListTable("company-required-container", d.company_details_required_leads || [], "No company-details-required leads right now.");
+    renderLeadListTable("contracted-container", d.contracted_leads || [], "No contracted customers yet.");
     renderPipeline(d.status_counts);
     renderPriorityChart(d.priority_counts);
     renderSectorChart(d.sector_counts);
@@ -613,6 +674,11 @@ async function loadData() {
 // Auto-refresh every 60 seconds
 loadData();
 setInterval(loadData, 60000);
+
+document.getElementById("card-qualified").addEventListener("click", () => scrollToSection("qualified-section"));
+document.getElementById("card-contact-required").addEventListener("click", () => scrollToSection("contact-required-section"));
+document.getElementById("card-company-required").addEventListener("click", () => scrollToSection("company-required-section"));
+document.getElementById("card-contracted").addEventListener("click", () => scrollToSection("contracted-section"));
 </script>
 </body>
 </html>

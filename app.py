@@ -212,11 +212,6 @@ def fetch_stats():
     today_date  = scout_dates[0] if scout_dates else ""
 
     today_leads = [l for l in leads if l["scout_date"] == today_date]
-    top10_leads = sorted(
-        [l for l in leads if l["status"] != "Not Relevant"],
-        key=lambda l: (l["score"] or 0, l["scout_date"] or ""),
-        reverse=True
-    )[:10]
 
     # Pipeline status counts (all time)
     status_order = ["New Lead", "Contacted", "Responded", "Meeting Booked", "No Response", "Not Relevant"]
@@ -281,8 +276,11 @@ def fetch_stats():
         reverse=True
     )
     contactable_count = len(contactable_leads)
-    # Queue KPI cards are high-priority only.
+    # Queue KPI cards and queue lists are high-priority only.
     queue_counts = {"Ready": 0, "Research": 0, "Insufficient": 0}
+    qualified_leads = []
+    contact_info_required_leads = []
+    company_details_required_leads = []
     for l in leads:
         if l.get("priority") != "High":
             continue
@@ -291,6 +289,37 @@ def fetch_stats():
         q = l.get("enrichment_queue")
         if q in queue_counts:
             queue_counts[q] += 1
+        if q == "Ready":
+            qualified_leads.append(l)
+        elif q == "Research":
+            contact_info_required_leads.append(l)
+        elif q == "Insufficient":
+            company_details_required_leads.append(l)
+
+    qualified_leads = sorted(
+        qualified_leads,
+        key=lambda l: ((l.get("score") or 0), (l.get("scout_date") or "")),
+        reverse=True
+    )[:20]
+    contact_info_required_leads = sorted(
+        contact_info_required_leads,
+        key=lambda l: ((l.get("score") or 0), (l.get("profile_score") or 0), (l.get("scout_date") or "")),
+        reverse=True
+    )[:20]
+    company_details_required_leads = sorted(
+        company_details_required_leads,
+        key=lambda l: ((l.get("score") or 0), (l.get("profile_score") or 0), (l.get("scout_date") or "")),
+        reverse=True
+    )[:20]
+
+    contracted_leads = sorted(
+        [
+            l for l in leads
+            if (l.get("status") or "").strip().lower() in ("contracted", "customer", "won", "closed won")
+        ],
+        key=lambda l: ((l.get("scout_date") or ""), (l.get("score") or 0)),
+        reverse=True
+    )[:20]
     enrichment_focus = sorted(
         [
             l for l in leads
@@ -307,7 +336,10 @@ def fetch_stats():
         "today_date":        today_date,
         "today_count":       len(today_leads),
         "today_priority":    today_priority,
-        "top10_leads":       top10_leads,
+        "qualified_leads":   qualified_leads,
+        "contact_info_required_leads": contact_info_required_leads,
+        "company_details_required_leads": company_details_required_leads,
+        "contracted_leads":  contracted_leads,
         "status_counts":     status_counts,
         "priority_counts":   priority_counts,
         "sector_counts":     sector_counts,
