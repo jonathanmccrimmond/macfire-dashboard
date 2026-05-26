@@ -78,7 +78,6 @@
     /* Lead cards */
     .lead-card { background: var(--card2); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 12px; position: relative; }
     .lead-card:last-child { margin-bottom: 0; }
-    .lead-card .rank { position: absolute; top: 14px; right: 14px; font-size: 22px; font-weight: 900; color: var(--border); }
     .lead-name { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
     .lead-meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px; }
     .lead-score { background: var(--dark); border: 1px solid var(--border); border-radius: 6px; padding: 3px 10px; font-size: 13px; font-weight: 700; }
@@ -337,7 +336,6 @@ function renderTopLeads(leads) {
 
     return `
     <div class="lead-card compact">
-      <div class="rank">#${i+1}</div>
       <div class="lead-top-row">
         <div class="lead-name">${l.company}</div>
         <div class="lead-actions compact lead-right-actions">
