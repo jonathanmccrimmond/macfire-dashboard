@@ -186,19 +186,19 @@
     <div class="stat-card"><div class="label">High Priority</div><div class="value score-high" id="kpi-high">—</div><div class="sub">Score 75+</div></div>
     <div class="stat-card"><div class="label">Contacted</div><div class="value" id="kpi-contacted">—</div><div class="sub" id="kpi-responded">0 responded</div></div>
     <div class="stat-card"><div class="label">Meetings Booked</div><div class="value score-high" id="kpi-meetings">—</div><div class="sub">From pipeline</div></div>
-    <div class="stat-card" style="border-left:3px solid var(--green)"><div class="label">Contactable</div><div class="value" style="color:var(--green)" id="kpi-contactable">—</div><div class="sub">have phone or email</div></div>
+    <div class="stat-card" id="contactable-card" style="border-left:3px solid var(--green);cursor:pointer"><div class="label">Contactable</div><div class="value" style="color:var(--green)" id="kpi-contactable">—</div><div class="sub">click to view contact details</div></div>
   </div>
 
-  <!-- Top 5 today + Pipeline status -->
+  <!-- Top 10 + Pipeline status -->
   <div class="grid-2-1">
 
-    <!-- Top 5 Today -->
+    <!-- Top 10 Leads -->
     <div>
       <div class="section-header">
-        <div class="section-title">🏆 Top 5 Leads — Most Recent Run</div>
-        <div class="section-badge" id="today-badge">Today</div>
+        <div class="section-title">🏆 Top 10 Leads</div>
+        <div class="section-badge" id="today-badge">All Time</div>
       </div>
-      <div id="top5-container"><div class="loading panel">Loading leads…</div></div>
+      <div id="top10-container"><div class="loading panel">Loading leads…</div></div>
     </div>
 
     <!-- Pipeline status -->
@@ -229,6 +229,18 @@
     <div>
       <div class="section-header"><div class="section-title">📊 Score Distribution</div></div>
       <div class="panel"><div class="chart-wrap" style="height:240px"><canvas id="scoreChart"></canvas></div></div>
+    </div>
+  </div>
+
+
+  <!-- Contactable leads table -->
+  <div style="margin-bottom:24px;display:none" id="contactable-section">
+    <div class="section-header">
+      <div class="section-title">☎ Contactable Leads</div>
+      <span style="font-size:12px;color:var(--muted)">All leads with phone or email</span>
+    </div>
+    <div class="panel">
+      <div id="contactable-container"><div class="loading">Loading…</div></div>
     </div>
   </div>
 
@@ -299,11 +311,11 @@ function toggleLowQuality() {
   document.getElementById("quality-toggle").textContent = _showLowQuality ? "Hide low-quality" : "Show low-quality";
 }
 
-// ── Top 5 cards ────────────────────────────────────────────────────────────
-function renderTop5(leads, todayDate) {
-  const el = document.getElementById("top5-container");
+// ── Top 10 cards ───────────────────────────────────────────────────────────
+function renderTopLeads(leads) {
+  const el = document.getElementById("top10-container");
   if (!leads || leads.length === 0) {
-    el.innerHTML = '<div class="panel" style="color:var(--muted);text-align:center;padding:32px">No leads yet for the most recent run.</div>';
+    el.innerHTML = '<div class="panel" style="color:var(--muted);text-align:center;padding:32px">No top leads available.</div>';
     return;
   }
   el.innerHTML = leads.map((l, i) => {
@@ -312,7 +324,7 @@ function renderTop5(leads, todayDate) {
     const sector   = l.sector   ? `<strong>Sector:</strong> ${l.sector}`   : "";
     const addr     = l.address  ? `<strong>Address:</strong> ${l.address}` : "";
     const phone    = l.phone    ? `<strong>Phone:</strong> ${l.phone}`     : "";
-    const email    = l.email    ? `<strong>Email:</strong> <a href="mailto:${l.email}" style="color:var(--blue)">${l.email}</a>` : "";
+    const email    = l.email    ? `<strong>Email:</strong> <a href="mailto:${l.email}" style="color:var(--accent2)">${l.email}</a>` : "";
     const flags    = l.flags    ? `<div class="flags-text" title="${l.flags}">⚑ ${l.flags}</div>` : "";
 
     const mapsBtn   = l.maps_url    ? `<a class="lead-link maps"   href="${l.maps_url}"   target="_blank">📍 Maps</a>` : "";
@@ -334,7 +346,10 @@ function renderTop5(leads, todayDate) {
         ${[director, sector, addr, phone, email].filter(Boolean).join(" &nbsp;·&nbsp; ")}
       </div>
       ${flags}
-      <div class="lead-actions">${mapsBtn}${streetBtn}${notionBtn}</div>
+      <div class="lead-actions">
+        ${mapsBtn}${streetBtn}${notionBtn}
+        <button class="lead-action-btn" onclick="handleMarkNotRelevant(this, '${l.id}')">Mark Not Relevant</button>
+      </div>
     </div>`;
   }).join("");
 }
@@ -427,6 +442,42 @@ function renderScoreChart(buckets) {
       }
     }
   });
+}
+
+
+function renderContactable(leads) {
+  const el = document.getElementById("contactable-container");
+  if (!leads || leads.length === 0) {
+    el.innerHTML = '<div style="color:var(--muted);text-align:center;padding:24px">No contactable leads found.</div>';
+    return;
+  }
+
+  el.innerHTML = `
+  <table class="lead-table">
+    <thead><tr>
+      <th>Company</th><th>Director</th><th>Phone</th><th>Email</th><th>Status</th><th>Score</th><th>Run Date</th><th>Action</th>
+    </tr></thead>
+    <tbody>
+    ${leads.map(l => `
+      <tr>
+        <td><a class="company-link" href="${l.notion_url || '#'}" target="_blank">${l.company}</a></td>
+        <td style="color:var(--muted)">${l.director || "—"}</td>
+        <td style="color:var(--muted)">${l.phone || "—"}</td>
+        <td>${l.email ? `<a href="mailto:${l.email}" style="color:var(--accent2);font-size:11px">${l.email}</a>` : "—"}</td>
+        <td>${statusBadge(l.status)}</td>
+        <td><span class="score-value ${scoreClass(l.score)}">${l.score || "—"}</span></td>
+        <td style="color:var(--muted)">${l.scout_date || "—"}</td>
+        <td><button class="lead-action-btn" onclick="handleMarkNotRelevant(this, '${l.id}')">Mark Not Relevant</button></td>
+      </tr>
+    `).join("")}
+    </tbody>
+  </table>`;
+}
+
+function showContactableSection() {
+  const section = document.getElementById("contactable-section");
+  section.style.display = "block";
+  section.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 // ── Recent leads table ─────────────────────────────────────────────────────
@@ -522,7 +573,8 @@ async function loadData() {
       document.getElementById("today-badge").textContent  = d.today_date;
     }
 
-    renderTop5(d.top5_today, d.today_date);
+    renderTopLeads(d.top10_leads);
+    renderContactable(d.contactable_leads || []);
     renderPipeline(d.status_counts);
     renderPriorityChart(d.priority_counts);
     renderSectorChart(d.sector_counts);
@@ -534,6 +586,8 @@ async function loadData() {
     document.getElementById("last-updated").textContent = "Error — " + err.message;
   }
 }
+
+document.getElementById("contactable-card").addEventListener("click", showContactableSection);
 
 // Auto-refresh every 60 seconds
 loadData();

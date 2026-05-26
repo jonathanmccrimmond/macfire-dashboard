@@ -7,8 +7,14 @@ Deploy:       See README in this folder — Render.com free tier, ~5 mins.
 """
 
 import os, time, datetime, functools
+from pathlib import Path
 from flask import Flask, jsonify, render_template, request
+from dotenv import load_dotenv
 import requests
+
+# Load secrets from ~/Documents/MacFire/.env when running locally;
+# in production (Render etc.) env vars come from the platform.
+load_dotenv(Path.home() / "Documents" / "MacFire" / ".env")
 
 # ── Config ────────────────────────────────────────────────────────────────────
 NOTION_TOKEN = os.environ.get("NOTION_TOKEN", "")
@@ -149,7 +155,11 @@ def fetch_stats():
     today_date  = scout_dates[0] if scout_dates else ""
 
     today_leads = [l for l in leads if l["scout_date"] == today_date]
-    top5_today  = sorted(today_leads, key=lambda l: l["score"] or 0, reverse=True)[:5]
+    top10_leads = sorted(
+        [l for l in leads if l["status"] != "Not Relevant"],
+        key=lambda l: (l["score"] or 0, l["scout_date"] or ""),
+        reverse=True
+    )[:10]
 
     # Pipeline status counts (all time)
     status_order = ["New Lead", "Contacted", "Responded", "Meeting Booked", "No Response", "Not Relevant"]
@@ -204,14 +214,19 @@ def fetch_stats():
 
     # Unique run dates
     run_dates = scout_dates
-    contactable_count = sum(1 for l in leads if l.get("phone") or l.get("email"))
+    contactable_leads = sorted(
+        [l for l in leads if (l.get("phone") or l.get("email")) and l["status"] != "Not Relevant"],
+        key=lambda l: (l["scout_date"] or "", l["score"] or 0),
+        reverse=True
+    )
+    contactable_count = len(contactable_leads)
 
     return {
         "total_leads":       len(leads),
         "today_date":        today_date,
         "today_count":       len(today_leads),
         "today_priority":    today_priority,
-        "top5_today":        top5_today,
+        "top10_leads":       top10_leads,
         "status_counts":     status_counts,
         "priority_counts":   priority_counts,
         "sector_counts":     sector_counts,
@@ -223,6 +238,7 @@ def fetch_stats():
         "run_dates":         run_dates,
         "days_running":      len(run_dates),
         "contactable_count": contactable_count,
+        "contactable_leads": contactable_leads,
         "last_refreshed":    datetime.datetime.now().strftime("%H:%M:%S"),
     }
 
@@ -238,6 +254,24 @@ def api_stats():
     try:
         data = cached("stats", fetch_stats)
         return jsonify({"ok": True, "data": data})
+    except requests.HTTPError as e:
+        status = e.response.status_code if e.response is not None else None
+        if status in (401, 403):
+            return jsonify({
+                "ok": False,
+                "error": (
+                    "Notion authorization failed for the dashboard runtime. "
+                    "Update deployment env vars (NOTION_TOKEN / NOTION_DB_ID) and "
+                    "confirm the integration has access to the Lead Pipeline database."
+                ),
+                "status": status,
+            }), 502
+        msg = ""
+        try:
+            msg = e.response.text
+        except Exception:
+            msg = str(e)
+        return jsonify({"ok": False, "error": f"Notion request failed: {msg}", "status": status}), 502
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
