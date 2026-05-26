@@ -251,6 +251,10 @@ def fetch_stats():
     contacted = sum(1 for l in leads if l["status"] in ("Contacted", "Responded", "Meeting Booked"))
     responded = sum(1 for l in leads if l["status"] in ("Responded", "Meeting Booked"))
     meetings  = sum(1 for l in leads if l["status"] == "Meeting Booked")
+    contracted = sum(
+        1 for l in leads
+        if (l.get("status") or "").strip().lower() in ("contracted", "customer", "won", "closed won")
+    )
 
     # Recent activity (last 10 leads by scout run date)
     recent = sorted(
@@ -277,8 +281,13 @@ def fetch_stats():
         reverse=True
     )
     contactable_count = len(contactable_leads)
+    # Queue KPI cards are high-priority only.
     queue_counts = {"Ready": 0, "Research": 0, "Insufficient": 0}
     for l in leads:
+        if l.get("priority") != "High":
+            continue
+        if l.get("status") == "Not Relevant":
+            continue
         q = l.get("enrichment_queue")
         if q in queue_counts:
             queue_counts[q] += 1
@@ -305,6 +314,7 @@ def fetch_stats():
         "contacted":         contacted,
         "responded":         responded,
         "meetings":          meetings,
+        "contracted":        contracted,
         "recent":            recent,
         "score_buckets":     score_buckets,
         "run_dates":         run_dates,

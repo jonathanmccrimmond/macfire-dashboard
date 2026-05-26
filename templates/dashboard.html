@@ -144,10 +144,10 @@
     /* Flags */
     .flags-text { font-size: 11px; color: var(--muted); max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-    /* Grid-8 for KPI row */
-    .grid-7 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
-    @media (max-width: 1200px) { .grid-7 { grid-template-columns: repeat(3, 1fr); } }
-    @media (max-width: 700px)  { .grid-7 { grid-template-columns: repeat(2, 1fr); } }
+    /* Grid for KPI row */
+    .grid-8 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+    @media (max-width: 1200px) { .grid-8 { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 700px)  { .grid-8 { grid-template-columns: repeat(2, 1fr); } }
 
     /* Table quality filter */
     .toggle-link { cursor: pointer; color: var(--muted); font-size: 12px; text-decoration: underline; user-select: none; }
@@ -187,14 +187,15 @@
   </div>
 
   <!-- KPI row -->
-  <div class="grid-7" id="kpi-row">
+  <div class="grid-8" id="kpi-row">
     <div class="stat-card accent"><div class="label">Total Leads</div><div class="value" id="kpi-total">—</div><div class="sub" id="kpi-days">Scout running</div></div>
     <div class="stat-card"><div class="label">High Priority</div><div class="value score-high" id="kpi-high">—</div><div class="sub">Score 75+</div></div>
-    <div class="stat-card"><div class="label">Enrichment Ready</div><div class="value" style="color:var(--green)" id="kpi-ready">—</div><div class="sub">Verified enough to route</div></div>
-    <div class="stat-card"><div class="label">Needs Research</div><div class="value" style="color:var(--amber)" id="kpi-research">—</div><div class="sub">Role/contact discovery needed</div></div>
-    <div class="stat-card"><div class="label">Needs Data</div><div class="value" style="color:var(--muted)" id="kpi-insufficient">—</div><div class="sub">Identity data still incomplete</div></div>
+    <div class="stat-card"><div class="label">Qualified Leads</div><div class="value" style="color:var(--green)" id="kpi-ready">—</div><div class="sub">High priority and outreach-ready</div></div>
+    <div class="stat-card"><div class="label">Contact Info Required</div><div class="value" style="color:var(--amber)" id="kpi-research">—</div><div class="sub">High priority, needs contact discovery</div></div>
+    <div class="stat-card"><div class="label">Company Details Required</div><div class="value" style="color:var(--muted)" id="kpi-insufficient">—</div><div class="sub">High priority, profile incomplete</div></div>
     <div class="stat-card"><div class="label">Contacted</div><div class="value" id="kpi-contacted">—</div><div class="sub" id="kpi-responded">0 responded</div></div>
     <div class="stat-card"><div class="label">Meetings Booked</div><div class="value score-high" id="kpi-meetings">—</div><div class="sub">From pipeline</div></div>
+    <div class="stat-card"><div class="label">Contracted</div><div class="value" style="color:var(--green)" id="kpi-contracted">—</div><div class="sub">Signed and now a customer</div></div>
   </div>
 
   <!-- Top 10 + Pipeline status -->
@@ -575,6 +576,7 @@ async function loadData() {
     document.getElementById("kpi-contacted").textContent    = d.contacted;
     document.getElementById("kpi-responded").textContent    = `${d.responded} responded`;
     document.getElementById("kpi-meetings").textContent     = d.meetings;
+    document.getElementById("kpi-contracted").textContent   = d.contracted || 0;
 
     // Today banner
     if (d.today_date) {
