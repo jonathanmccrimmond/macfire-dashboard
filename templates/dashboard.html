@@ -97,7 +97,8 @@
     .lead-link:hover { background: var(--border); }
     .lead-link.maps  { border-color: rgba(41,128,185,0.5); color: #5DADE2; }
     .lead-link.notion { border-color: rgba(136,150,176,0.4); }
-    .lead-card.compact { padding-right: 14px; }
+    .lead-card.compact { padding-right: 14px; padding-bottom: 12px; }
+    .lead-card .archive-btn { position: absolute; right: 12px; bottom: 12px; }
 
     /* Pipeline status */
     .pipeline-row { display: flex; align-items: center; margin-bottom: 14px; }
@@ -399,9 +400,7 @@ function renderTopLeads(leads) {
         ${[director, sector, addr, phone, email].filter(Boolean).join(" &nbsp;·&nbsp; ")}
       </div>
       <div class="lead-detail"><strong>Website:</strong> ${websiteConfidence} &nbsp;·&nbsp; <strong>Profile Score:</strong> ${l.profile_score || 0} &nbsp;·&nbsp; <strong>Next:</strong> ${l.next_best_action || "—"}</div>
-      <div class="lead-actions bottom-right">
-        <button class="lead-action-btn" onclick="handleMarkNotRelevant(this, '${l.id}')">Archive</button>
-      </div>
+      <button class="lead-action-btn archive-btn" onclick="handleMarkNotRelevant(this, '${l.id}')">Archive</button>
       ${flags}
     </div>`;
   }).join("");
