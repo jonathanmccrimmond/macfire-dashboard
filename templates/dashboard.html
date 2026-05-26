@@ -85,10 +85,14 @@
     .lead-detail { color: var(--muted); font-size: 12px; line-height: 1.6; }
     .lead-detail strong { color: var(--text); }
     .lead-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+    .lead-top-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+    .lead-right-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+    .lead-actions.compact { margin-top: 0; }
     .lead-link { background: var(--dark); border: 1px solid var(--border); color: var(--text); text-decoration: none; padding: 5px 12px; border-radius: 6px; font-size: 12px; transition: background 0.15s; }
     .lead-link:hover { background: var(--border); }
     .lead-link.maps  { border-color: rgba(41,128,185,0.5); color: #5DADE2; }
     .lead-link.notion { border-color: rgba(136,150,176,0.4); }
+    .lead-card.compact { padding-right: 14px; }
 
     /* Pipeline status */
     .pipeline-row { display: flex; align-items: center; margin-bottom: 14px; }
@@ -329,12 +333,18 @@ function renderTopLeads(leads) {
 
     const mapsBtn   = l.maps_url    ? `<a class="lead-link maps"   href="${l.maps_url}"   target="_blank">📍 Maps</a>` : "";
     const streetBtn = l.street_view ? `<a class="lead-link"         href="${l.street_view}" target="_blank">📷 Street View</a>` : "";
-    const notionBtn = l.notion_url  ? `<a class="lead-link notion"  href="${l.notion_url}"  target="_blank">↗ Notion</a>` : "";
+    const notionBtn = l.notion_url  ? `<a class="lead-link notion"  href="${l.notion_url}"  target="_blank">Details</a>` : "";
 
     return `
-    <div class="lead-card">
+    <div class="lead-card compact">
       <div class="rank">#${i+1}</div>
-      <div class="lead-name">${l.company}</div>
+      <div class="lead-top-row">
+        <div class="lead-name">${l.company}</div>
+        <div class="lead-actions compact lead-right-actions">
+          ${mapsBtn}${streetBtn}${notionBtn}
+          <button class="lead-action-btn" onclick="handleMarkNotRelevant(this, '${l.id}')">Not Relevant</button>
+        </div>
+      </div>
       <div class="lead-meta">
         ${priorityBadge(l.priority)}
         ${score}
@@ -346,10 +356,6 @@ function renderTopLeads(leads) {
         ${[director, sector, addr, phone, email].filter(Boolean).join(" &nbsp;·&nbsp; ")}
       </div>
       ${flags}
-      <div class="lead-actions">
-        ${mapsBtn}${streetBtn}${notionBtn}
-        <button class="lead-action-btn" onclick="handleMarkNotRelevant(this, '${l.id}')">Mark Not Relevant</button>
-      </div>
     </div>`;
   }).join("");
 }
