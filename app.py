@@ -128,10 +128,10 @@ def _has_role_target(lead):
 
 def _website_confidence(lead):
     if (lead.get("website") or "").strip():
-        return "known"
+        return "Known"
     if (lead.get("domain") or "").strip():
-        return "inferred"
-    return "missing"
+        return "Inferred"
+    return "Missing"
 
 def _enrichment_profile(lead):
     score = 0
