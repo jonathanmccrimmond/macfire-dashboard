@@ -92,6 +92,7 @@
     .lead-top-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
     .lead-right-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
     .lead-actions.compact { margin-top: 0; }
+    .lead-actions.bottom-right { justify-content: flex-end; }
     .lead-link { background: var(--dark); border: 1px solid var(--border); color: var(--text); text-decoration: none; padding: 5px 12px; border-radius: 6px; font-size: 12px; transition: background 0.15s; }
     .lead-link:hover { background: var(--border); }
     .lead-link.maps  { border-color: rgba(41,128,185,0.5); color: #5DADE2; }
@@ -384,7 +385,6 @@ function renderTopLeads(leads) {
         <div class="lead-name">${l.company}</div>
         <div class="lead-actions compact lead-right-actions">
           ${mapsBtn}${streetBtn}${notionBtn}
-          <button class="lead-action-btn" onclick="handleMarkNotRelevant(this, '${l.id}')">Not Relevant</button>
         </div>
       </div>
       <div class="lead-meta">
@@ -399,6 +399,9 @@ function renderTopLeads(leads) {
         ${[director, sector, addr, phone, email].filter(Boolean).join(" &nbsp;·&nbsp; ")}
       </div>
       <div class="lead-detail"><strong>Website:</strong> ${websiteConfidence} &nbsp;·&nbsp; <strong>Profile Score:</strong> ${l.profile_score || 0} &nbsp;·&nbsp; <strong>Next:</strong> ${l.next_best_action || "—"}</div>
+      <div class="lead-actions bottom-right">
+        <button class="lead-action-btn" onclick="handleMarkNotRelevant(this, '${l.id}')">Archive</button>
+      </div>
       ${flags}
     </div>`;
   }).join("");
@@ -590,7 +593,7 @@ function renderTable(leads) {
         <td style="color:var(--muted)">${contactCell}</td>
         <td style="color:var(--muted)">${l.scout_date || "—"}</td>
         <td>
-          <button class="lead-action-btn" onclick="handleMarkNotRelevant(this, '${l.id}')">Mark Not Relevant</button>
+          <button class="lead-action-btn" onclick="handleMarkNotRelevant(this, '${l.id}')">Archive</button>
         </td>
       </tr>`;
     }).join("")}
