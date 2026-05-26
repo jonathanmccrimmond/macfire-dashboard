@@ -145,9 +145,9 @@
     .flags-text { font-size: 11px; color: var(--muted); max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
     /* Grid-8 for KPI row */
-    .grid-8 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
-    @media (max-width: 1200px) { .grid-8 { grid-template-columns: repeat(3, 1fr); } }
-    @media (max-width: 700px)  { .grid-8 { grid-template-columns: repeat(2, 1fr); } }
+    .grid-7 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+    @media (max-width: 1200px) { .grid-7 { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 700px)  { .grid-7 { grid-template-columns: repeat(2, 1fr); } }
 
     /* Table quality filter */
     .toggle-link { cursor: pointer; color: var(--muted); font-size: 12px; text-decoration: underline; user-select: none; }
@@ -187,15 +187,14 @@
   </div>
 
   <!-- KPI row -->
-  <div class="grid-8" id="kpi-row">
+  <div class="grid-7" id="kpi-row">
     <div class="stat-card accent"><div class="label">Total Leads</div><div class="value" id="kpi-total">—</div><div class="sub" id="kpi-days">Scout running</div></div>
     <div class="stat-card"><div class="label">High Priority</div><div class="value score-high" id="kpi-high">—</div><div class="sub">Score 75+</div></div>
     <div class="stat-card"><div class="label">Enrichment Ready</div><div class="value" style="color:var(--green)" id="kpi-ready">—</div><div class="sub">Verified enough to route</div></div>
     <div class="stat-card"><div class="label">Needs Research</div><div class="value" style="color:var(--amber)" id="kpi-research">—</div><div class="sub">Role/contact discovery needed</div></div>
-    <div class="stat-card"><div class="label">Insufficient</div><div class="value" style="color:var(--muted)" id="kpi-insufficient">—</div><div class="sub">Identity data too thin</div></div>
+    <div class="stat-card"><div class="label">Needs Data</div><div class="value" style="color:var(--muted)" id="kpi-insufficient">—</div><div class="sub">Identity data still incomplete</div></div>
     <div class="stat-card"><div class="label">Contacted</div><div class="value" id="kpi-contacted">—</div><div class="sub" id="kpi-responded">0 responded</div></div>
     <div class="stat-card"><div class="label">Meetings Booked</div><div class="value score-high" id="kpi-meetings">—</div><div class="sub">From pipeline</div></div>
-    <div class="stat-card" id="contactable-card" style="border-left:3px solid var(--green);cursor:pointer"><div class="label">Contactable</div><div class="value" style="color:var(--green)" id="kpi-contactable">—</div><div class="sub">click to view contact details</div></div>
   </div>
 
   <!-- Top 10 + Pipeline status -->
@@ -241,17 +240,6 @@
     </div>
   </div>
 
-
-  <!-- Contactable leads table -->
-  <div style="margin-bottom:24px;display:none" id="contactable-section">
-    <div class="section-header">
-      <div class="section-title">☎ Contactable Leads</div>
-      <span style="font-size:12px;color:var(--muted)">All leads with phone or email</span>
-    </div>
-    <div class="panel">
-      <div id="contactable-container"><div class="loading">Loading…</div></div>
-    </div>
-  </div>
 
   <!-- Enrichment queue focus -->
   <div style="margin-bottom:24px">
@@ -326,7 +314,8 @@ function statusBadge(s) {
 
 function queueBadge(q) {
   const cls = QUEUE_BADGE_CLASS[q] || "badge-insufficient";
-  return `<span class="badge ${cls}">${q || "—"}</span>`;
+  const label = (q === "Insufficient") ? "Needs Data" : (q || "—");
+  return `<span class="badge ${cls}">${label}</span>`;
 }
 
 // ── Low-quality toggle ─────────────────────────────────────────────────────
@@ -479,35 +468,6 @@ function renderScoreChart(buckets) {
 }
 
 
-function renderContactable(leads) {
-  const el = document.getElementById("contactable-container");
-  if (!leads || leads.length === 0) {
-    el.innerHTML = '<div style="color:var(--muted);text-align:center;padding:24px">No contactable leads found.</div>';
-    return;
-  }
-
-  el.innerHTML = `
-  <table class="lead-table">
-    <thead><tr>
-      <th>Company</th><th>Director</th><th>Phone</th><th>Email</th><th>Status</th><th>Score</th><th>Run Date</th><th>Action</th>
-    </tr></thead>
-    <tbody>
-    ${leads.map(l => `
-      <tr>
-        <td><a class="company-link" href="${l.notion_url || '#'}" target="_blank">${l.company}</a></td>
-        <td style="color:var(--muted)">${l.director || "—"}</td>
-        <td style="color:var(--muted)">${l.phone || "—"}</td>
-        <td>${l.email ? `<a href="mailto:${l.email}" style="color:var(--accent2);font-size:11px">${l.email}</a>` : "—"}</td>
-        <td>${statusBadge(l.status)}</td>
-        <td><span class="score-value ${scoreClass(l.score)}">${l.score || "—"}</span></td>
-        <td style="color:var(--muted)">${l.scout_date || "—"}</td>
-        <td><button class="lead-action-btn" onclick="handleMarkNotRelevant(this, '${l.id}')">Mark Not Relevant</button></td>
-      </tr>
-    `).join("")}
-    </tbody>
-  </table>`;
-}
-
 function renderEnrichmentFocus(leads) {
   const el = document.getElementById("enrichment-focus-container");
   if (!leads || leads.length === 0) {
@@ -534,12 +494,6 @@ function renderEnrichmentFocus(leads) {
     `).join("")}
     </tbody>
   </table>`;
-}
-
-function showContactableSection() {
-  const section = document.getElementById("contactable-section");
-  section.style.display = "block";
-  section.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 // ── Recent leads table ─────────────────────────────────────────────────────
@@ -626,7 +580,6 @@ async function loadData() {
     document.getElementById("kpi-contacted").textContent    = d.contacted;
     document.getElementById("kpi-responded").textContent    = `${d.responded} responded`;
     document.getElementById("kpi-meetings").textContent     = d.meetings;
-    document.getElementById("kpi-contactable").textContent  = d.contactable_count || 0;
 
     // Today banner
     if (d.today_date) {
@@ -640,7 +593,6 @@ async function loadData() {
     }
 
     renderTopLeads(d.top10_leads);
-    renderContactable(d.contactable_leads || []);
     renderEnrichmentFocus(d.enrichment_focus || []);
     renderPipeline(d.status_counts);
     renderPriorityChart(d.priority_counts);
@@ -653,8 +605,6 @@ async function loadData() {
     document.getElementById("last-updated").textContent = "Error — " + err.message;
   }
 }
-
-document.getElementById("contactable-card").addEventListener("click", showContactableSection);
 
 // Auto-refresh every 60 seconds
 loadData();
