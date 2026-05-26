@@ -74,6 +74,9 @@
     .badge-meeting    { background: rgba(125,60,152,0.2);  color: #A569BD; }
     .badge-noresp     { background: rgba(192,57,43,0.15);  color: #E74C3C; }
     .badge-notrel     { background: rgba(136,150,176,0.1); color: var(--muted); }
+    .badge-ready      { background: rgba(16,185,129,0.2); color: #34D399; border: 1px solid rgba(16,185,129,0.4); }
+    .badge-research   { background: rgba(245,158,11,0.2); color: #FBBF24; border: 1px solid rgba(245,158,11,0.4); }
+    .badge-insufficient { background: rgba(148,163,184,0.18); color: #CBD5E1; border: 1px solid rgba(148,163,184,0.35); }
 
     /* Lead cards */
     .lead-card { background: var(--card2); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 12px; position: relative; }
@@ -141,10 +144,10 @@
     /* Flags */
     .flags-text { font-size: 11px; color: var(--muted); max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-    /* Grid-5 for KPI row */
-    .grid-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 24px; }
-    @media (max-width: 1200px) { .grid-5 { grid-template-columns: repeat(3, 1fr); } }
-    @media (max-width: 700px)  { .grid-5 { grid-template-columns: repeat(2, 1fr); } }
+    /* Grid-8 for KPI row */
+    .grid-8 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+    @media (max-width: 1200px) { .grid-8 { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 700px)  { .grid-8 { grid-template-columns: repeat(2, 1fr); } }
 
     /* Table quality filter */
     .toggle-link { cursor: pointer; color: var(--muted); font-size: 12px; text-decoration: underline; user-select: none; }
@@ -184,9 +187,12 @@
   </div>
 
   <!-- KPI row -->
-  <div class="grid-5" id="kpi-row">
+  <div class="grid-8" id="kpi-row">
     <div class="stat-card accent"><div class="label">Total Leads</div><div class="value" id="kpi-total">—</div><div class="sub" id="kpi-days">Scout running</div></div>
     <div class="stat-card"><div class="label">High Priority</div><div class="value score-high" id="kpi-high">—</div><div class="sub">Score 75+</div></div>
+    <div class="stat-card"><div class="label">Enrichment Ready</div><div class="value" style="color:var(--green)" id="kpi-ready">—</div><div class="sub">Verified enough to route</div></div>
+    <div class="stat-card"><div class="label">Needs Research</div><div class="value" style="color:var(--amber)" id="kpi-research">—</div><div class="sub">Role/contact discovery needed</div></div>
+    <div class="stat-card"><div class="label">Insufficient</div><div class="value" style="color:var(--muted)" id="kpi-insufficient">—</div><div class="sub">Identity data too thin</div></div>
     <div class="stat-card"><div class="label">Contacted</div><div class="value" id="kpi-contacted">—</div><div class="sub" id="kpi-responded">0 responded</div></div>
     <div class="stat-card"><div class="label">Meetings Booked</div><div class="value score-high" id="kpi-meetings">—</div><div class="sub">From pipeline</div></div>
     <div class="stat-card" id="contactable-card" style="border-left:3px solid var(--green);cursor:pointer"><div class="label">Contactable</div><div class="value" style="color:var(--green)" id="kpi-contactable">—</div><div class="sub">click to view contact details</div></div>
@@ -247,6 +253,17 @@
     </div>
   </div>
 
+  <!-- Enrichment queue focus -->
+  <div style="margin-bottom:24px">
+    <div class="section-header">
+      <div class="section-title">🔎 Enrichment Focus Queue</div>
+      <span style="font-size:12px;color:var(--muted)">Priority leads with no contact details</span>
+    </div>
+    <div class="panel">
+      <div id="enrichment-focus-container"><div class="loading">Loading…</div></div>
+    </div>
+  </div>
+
   <!-- Recent leads table -->
   <div style="margin-bottom:24px">
     <div class="section-header">
@@ -281,6 +298,11 @@ const STATUS_BADGE_CLASS = {
   "Responded": "badge-responded", "Meeting Booked": "badge-meeting",
   "No Response": "badge-noresp", "Not Relevant": "badge-notrel",
 };
+const QUEUE_BADGE_CLASS = {
+  "Ready": "badge-ready",
+  "Research": "badge-research",
+  "Insufficient": "badge-insufficient",
+};
 const SECTOR_COLORS = [
   "#6366F1","#2980B9","#1A8A4A","#7D3C98","#D4AC0D","#E67E22","#1ABC9C","#818CF8","#546E7A"
 ];
@@ -300,6 +322,11 @@ function priorityBadge(p) {
 function statusBadge(s) {
   const cls = STATUS_BADGE_CLASS[s] || "badge-low";
   return `<span class="badge ${cls}">${s || "—"}</span>`;
+}
+
+function queueBadge(q) {
+  const cls = QUEUE_BADGE_CLASS[q] || "badge-insufficient";
+  return `<span class="badge ${cls}">${q || "—"}</span>`;
 }
 
 // ── Low-quality toggle ─────────────────────────────────────────────────────
@@ -329,6 +356,7 @@ function renderTopLeads(leads) {
     const phone    = l.phone    ? `<strong>Phone:</strong> ${l.phone}`     : "";
     const email    = l.email    ? `<strong>Email:</strong> <a href="mailto:${l.email}" style="color:var(--accent2)">${l.email}</a>` : "";
     const flags    = l.flags    ? `<div class="flags-text" title="${l.flags}">⚑ ${l.flags}</div>` : "";
+    const websiteConfidence = l.website_confidence || "missing";
 
     const mapsBtn   = l.maps_url    ? `<a class="lead-link maps"   href="${l.maps_url}"   target="_blank">📍 Maps</a>` : "";
     const streetBtn = l.street_view ? `<a class="lead-link"         href="${l.street_view}" target="_blank">📷 Street View</a>` : "";
@@ -349,10 +377,12 @@ function renderTopLeads(leads) {
         ${l.sector ? `<span style="color:var(--muted);font-size:12px">${l.sector}</span>` : ""}
         ${l.postcode ? `<span style="color:var(--muted);font-size:12px">${l.postcode}</span>` : ""}
         ${statusBadge(l.status)}
+        ${queueBadge(l.enrichment_queue)}
       </div>
       <div class="lead-detail">
         ${[director, sector, addr, phone, email].filter(Boolean).join(" &nbsp;·&nbsp; ")}
       </div>
+      <div class="lead-detail"><strong>Website:</strong> ${websiteConfidence} &nbsp;·&nbsp; <strong>Profile Score:</strong> ${l.profile_score || 0} &nbsp;·&nbsp; <strong>Next:</strong> ${l.next_best_action || "—"}</div>
       ${flags}
     </div>`;
   }).join("");
@@ -478,6 +508,34 @@ function renderContactable(leads) {
   </table>`;
 }
 
+function renderEnrichmentFocus(leads) {
+  const el = document.getElementById("enrichment-focus-container");
+  if (!leads || leads.length === 0) {
+    el.innerHTML = '<div style="color:var(--muted);text-align:center;padding:24px">No enrichment focus leads right now.</div>';
+    return;
+  }
+
+  el.innerHTML = `
+  <table class="lead-table">
+    <thead><tr>
+      <th>Company</th><th>Priority</th><th>Queue</th><th>Profile</th><th>Website</th><th>Next Best Action</th><th>Run Date</th>
+    </tr></thead>
+    <tbody>
+    ${leads.map(l => `
+      <tr>
+        <td><a class="company-link" href="${l.notion_url || '#'}" target="_blank">${l.company}</a></td>
+        <td>${priorityBadge(l.priority)}</td>
+        <td>${queueBadge(l.enrichment_queue)}</td>
+        <td><span class="score-value ${scoreClass(l.profile_score)}">${l.profile_score || 0}</span></td>
+        <td style="color:var(--muted)">${l.website_confidence || "missing"}</td>
+        <td style="color:var(--muted)">${l.next_best_action || "—"}</td>
+        <td style="color:var(--muted)">${l.scout_date || "—"}</td>
+      </tr>
+    `).join("")}
+    </tbody>
+  </table>`;
+}
+
 function showContactableSection() {
   const section = document.getElementById("contactable-section");
   section.style.display = "block";
@@ -495,7 +553,7 @@ function renderTable(leads) {
   <table class="lead-table">
     <thead><tr>
       <th>Company</th><th>Priority</th><th>Score</th>
-      <th>Sector</th><th>Status</th><th>Director</th><th>Phone</th><th>Run Date</th><th>Action</th>
+      <th>Sector</th><th>Status</th><th>Queue</th><th>Director</th><th>Phone</th><th>Run Date</th><th>Action</th>
     </tr></thead>
     <tbody>
     ${leads.map(l => {
@@ -511,6 +569,7 @@ function renderTable(leads) {
         <td><span class="score-value ${scoreClass(l.score)}">${l.score || "—"}</span></td>
         <td style="color:var(--muted)">${l.sector || "—"}</td>
         <td>${statusBadge(l.status)}</td>
+        <td>${queueBadge(l.enrichment_queue)}</td>
         <td style="color:var(--muted)">${l.director || "—"}</td>
         <td style="color:var(--muted)">${contactCell}</td>
         <td style="color:var(--muted)">${l.scout_date || "—"}</td>
@@ -561,6 +620,9 @@ async function loadData() {
     document.getElementById("kpi-total").textContent        = d.total_leads;
     document.getElementById("kpi-days").textContent         = `${d.days_running} day${d.days_running !== 1 ? "s" : ""} running`;
     document.getElementById("kpi-high").textContent         = d.priority_counts.High || 0;
+    document.getElementById("kpi-ready").textContent        = d.queue_counts.Ready || 0;
+    document.getElementById("kpi-research").textContent     = d.queue_counts.Research || 0;
+    document.getElementById("kpi-insufficient").textContent = d.queue_counts.Insufficient || 0;
     document.getElementById("kpi-contacted").textContent    = d.contacted;
     document.getElementById("kpi-responded").textContent    = `${d.responded} responded`;
     document.getElementById("kpi-meetings").textContent     = d.meetings;
@@ -579,6 +641,7 @@ async function loadData() {
 
     renderTopLeads(d.top10_leads);
     renderContactable(d.contactable_leads || []);
+    renderEnrichmentFocus(d.enrichment_focus || []);
     renderPipeline(d.status_counts);
     renderPriorityChart(d.priority_counts);
     renderSectorChart(d.sector_counts);

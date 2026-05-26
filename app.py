@@ -103,8 +103,64 @@ def _parse(page):
         "date_responded": _prop(page, "Date Responded",     "date"),
         "next_action":  _prop(page, "Next Action",          "text"),
         "email_draft":  _prop(page, "Email Draft",          "text"),
+        "website":      _prop(page, "Website",              "url"),
+        "domain":       _prop(page, "Domain",               "text"),
         "notion_url":   page.get("url", ""),
     }
+
+def _has_company_identity(lead):
+    return bool((lead.get("company") or "").strip())
+
+def _has_industry(lead):
+    return bool((lead.get("sector") or "").strip())
+
+def _has_geo(lead):
+    return bool((lead.get("postcode") or "").strip() or (lead.get("address") or "").strip())
+
+def _has_role_target(lead):
+    role_hints = " ".join([
+        lead.get("director") or "",
+        lead.get("trigger") or "",
+        lead.get("next_action") or "",
+        lead.get("flags") or "",
+    ]).lower()
+    return any(x in role_hints for x in ("director", "owner", "founder", "manager", "head", "contact"))
+
+def _website_confidence(lead):
+    if (lead.get("website") or "").strip():
+        return "known"
+    if (lead.get("domain") or "").strip():
+        return "inferred"
+    return "missing"
+
+def _enrichment_profile(lead):
+    score = 0
+    if _has_company_identity(lead):
+        score += 25
+    if _has_industry(lead):
+        score += 20
+    if _has_geo(lead):
+        score += 20
+    if _has_role_target(lead):
+        score += 15
+    if (lead.get("phone") or "").strip() or (lead.get("email") or "").strip():
+        score += 20
+
+    if score >= 75 and ((lead.get("phone") or "").strip() or (lead.get("email") or "").strip()):
+        queue = "Ready"
+        next_action = "Start outreach"
+    elif score >= 45:
+        queue = "Research"
+        next_action = "Find decision maker and verify contact"
+    else:
+        queue = "Insufficient"
+        next_action = "Confirm company identity and location first"
+
+    lead["profile_score"] = score
+    lead["enrichment_queue"] = queue
+    lead["next_best_action"] = next_action
+    lead["website_confidence"] = _website_confidence(lead)
+    return lead
 
 
 # ── Cached data layer (60-second TTL) ─────────────────────────────────────────
@@ -149,6 +205,7 @@ def fetch_stats():
         sorts=[{"property": "Scout Run Date", "direction": "descending"}]
     )
     leads = [_parse(p) for p in pages]
+    leads = [_enrichment_profile(l) for l in leads]
 
     # Most recent scout run date
     scout_dates = sorted({l["scout_date"] for l in leads if l["scout_date"]}, reverse=True)
@@ -220,6 +277,21 @@ def fetch_stats():
         reverse=True
     )
     contactable_count = len(contactable_leads)
+    queue_counts = {"Ready": 0, "Research": 0, "Insufficient": 0}
+    for l in leads:
+        q = l.get("enrichment_queue")
+        if q in queue_counts:
+            queue_counts[q] += 1
+    enrichment_focus = sorted(
+        [
+            l for l in leads
+            if l.get("priority") in ("High", "Medium")
+            and l.get("status") != "Not Relevant"
+            and not ((l.get("phone") or "").strip() or (l.get("email") or "").strip())
+        ],
+        key=lambda l: ((l.get("score") or 0), (l.get("profile_score") or 0), (l.get("scout_date") or "")),
+        reverse=True
+    )[:20]
 
     return {
         "total_leads":       len(leads),
@@ -239,6 +311,8 @@ def fetch_stats():
         "days_running":      len(run_dates),
         "contactable_count": contactable_count,
         "contactable_leads": contactable_leads,
+        "queue_counts":      queue_counts,
+        "enrichment_focus":  enrichment_focus,
         "last_refreshed":    datetime.datetime.now().strftime("%H:%M:%S"),
     }
 
