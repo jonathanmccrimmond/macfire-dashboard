@@ -348,7 +348,7 @@ function renderTopLeads(leads) {
     const phone    = l.phone    ? `<strong>Phone:</strong> ${l.phone}`     : "";
     const email    = l.email    ? `<strong>Email:</strong> <a href="mailto:${l.email}" style="color:var(--accent2)">${l.email}</a>` : "";
     const flags    = l.flags    ? `<div class="flags-text" title="${l.flags}">⚑ ${l.flags}</div>` : "";
-    const websiteConfidence = titleCaseLabel(l.website_confidence || "Missing");
+    const websiteConfidence = titleCaseLabel(l.website_confidence || "Not Available");
 
     const mapsBtn   = l.maps_url    ? `<a class="lead-link maps"   href="${l.maps_url}"   target="_blank">📍 Maps</a>` : "";
     const streetBtn = l.street_view ? `<a class="lead-link"         href="${l.street_view}" target="_blank">📷 Street View</a>` : "";
@@ -490,7 +490,7 @@ function renderEnrichmentFocus(leads) {
         <td>${priorityBadge(l.priority)}</td>
         <td>${queueBadge(l.enrichment_queue)}</td>
         <td><span class="score-value ${scoreClass(l.profile_score)}">${l.profile_score || 0}</span></td>
-        <td style="color:var(--muted)">${titleCaseLabel(l.website_confidence || "Missing")}</td>
+        <td style="color:var(--muted)">${titleCaseLabel(l.website_confidence || "Not Available")}</td>
         <td style="color:var(--muted)">${l.next_best_action || "—"}</td>
         <td style="color:var(--muted)">${l.scout_date || "—"}</td>
       </tr>
