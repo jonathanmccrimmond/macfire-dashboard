@@ -29,6 +29,16 @@ NOTION_HEADERS = {
 
 app = Flask(__name__)
 
+
+@app.after_request
+def add_no_cache_headers(response):
+    if request.path == "/api/stats":
+        response.headers["Cache-Control"] = "no-store, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
+
+
 # ── Notion helpers ────────────────────────────────────────────────────────────
 def _query_all(filter_body=None, sorts=None):
     """Paginate through all Notion database results."""
