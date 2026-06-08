@@ -221,9 +221,11 @@ def fetch_stats():
         if s in status_counts:
             status_counts[s] += 1
 
-    # Priority breakdown (all time)
+    # Priority breakdown (active leads only)
     priority_counts = {"High": 0, "Medium": 0, "Low": 0}
     for l in leads:
+        if l.get("status") == "Not Relevant":
+            continue
         p = l["priority"]
         if p in priority_counts:
             priority_counts[p] += 1
